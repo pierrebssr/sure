@@ -1,0 +1,40 @@
+name: Mesh2CAD toolchain export
+
+on:
+  push:
+    branches:
+      - tmp/mesh2cad-occt-download-bridge
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the exact Mesh2CAD CI dependency set
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          mkdir -p "$PWD/debs/partial"
+          sudo apt-get \
+            -o Dir::Cache::archives="$PWD/debs" \
+            --download-only install -y \
+            build-essential cmake ninja-build \
+            libocct-foundation-dev libocct-modeling-data-dev \
+            libocct-modeling-algorithms-dev libocct-data-exchange-dev \
+            libpcl-dev libcgal-dev libboost-all-dev
+          sudo chown -R "$USER:$USER" debs
+          find debs -maxdepth 1 -type f -name '*.deb' -printf '%f\n' | sort > debs/MANIFEST.txt
+          du -sh debs
+      - name: Upload Debian package toolchain
+        uses: actions/upload-artifact@v4
+        with:
+          name: mesh2cad-ubuntu-24.04-toolchain-debs
+          path: debs
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
