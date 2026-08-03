@@ -1,0 +1,73 @@
+name: Mesh2CAD encrypted snapshot bridge
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out private Mesh2CAD branch
+        uses: actions/checkout@v4
+        with:
+          repository: pierrebssr/mesh2cad
+          ref: agent/p1-selection-topology-primitives
+          token: ${{ github.token }}
+          persist-credentials: false
+          path: mesh2cad
+
+      - name: Encrypt source snapshot for local-only use
+        shell: bash
+        run: |
+          cat > recipient.crt <<'CERT'
+          -----BEGIN CERTIFICATE-----
+          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
+          fOCFhug0E8LTGor+fnBnpd3S7Zxk3/2hGA==
+          -----END CERTIFICATE-----
+          CERT
+          tar --exclude=.git --exclude=build -czf mesh2cad-source.tar.gz -C mesh2cad .
+          openssl cms -encrypt -binary -aes256 \
+            -in mesh2cad-source.tar.gz \
+            -out mesh2cad-source.tar.gz.cms \
+            -outform DER recipient.crt
+          rm -rf mesh2cad mesh2cad-source.tar.gz recipient.crt
+
+      - name: Upload encrypted snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: mesh2cad-encrypted-source-snapshot
+          path: mesh2cad-source.tar.gz.cms
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
