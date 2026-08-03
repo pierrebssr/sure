@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - tmp/mesh2cad-occt-download-bridge
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
